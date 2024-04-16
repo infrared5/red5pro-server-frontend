@@ -61,11 +61,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
       <tbody>
         <tr><td class="p-name">host</td><td>hostname or IP</td><td><code>window.location.hostname</code></td></tr>
         <tr><td class="p-name">protocol</td><td> protocol which Stream Manager is served over (<code>http</code> or <code>https</code>)</td><td><code>window.location.protocol</code></td></tr>
-        <tr><td class="p-name">port</td><td>port number that Stream Maager is served on</td><td><code>window.location.port</code></td></tr>
+        <tr><td class="p-name">port</td><td>port number that Stream Manager is served on</td><td><code>window.location.port</code></td></tr>
         <tr><td class="p-name">app</td><td>webapp name to stream to on the server</td><td><code>live</code></td></tr>
         <tr><td class="p-name">streamName</td><td>The unique stream name to broadcast with or subscribe to</td><td><strong><em>None. Required</em></strong></td></tr>
+        <tr><td class="p-name">api</td><td>The API version of the Stream Manager 2.0</td><td><code>v1</code></td></tr>
+        <tr><td class="p-name">nodeGroup</td><td>The nodeGroup to target</td><td><code>default</code></td></tr>
         <tr><td class="p-name">verbose</td><td>Flag to enable verbose logging in Dev Console</td><td><em>true. optional</em></td></tr>
-        <tr><td class="p-name">view</td><td>Target broadcast tech (<code>rtc</code> or <code>rtmp</code>)</td><td><em>true. optional</em></td></tr>
         <tr><td class="p-name">audio</td><td>Flag to use audio in broadcast</td><td><em>true. Optional</em></td></tr>
         <tr><td class="p-name">cameraWidth</td><td>Camera width of broadcast</td><td><em>640. Optional</em></td></tr>
         <tr><td class="p-name">cameraHeight</td><td>Camera height of broadcast</td><td><em>480. Optional</em></td></tr>
@@ -73,8 +74,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
       </tbody>
     </table>
     <h2>Example</h2>
-    <p class="example"><code>proxy-publisher.html?host=myred5proserver.com&protocol=https&port=43&app=live&streamName=mystream&verbose=1</code</p>
-    <h3>Note</h3>
-    <p><em>If this page is served from the <code>live</code> webapp of the Stream Manager Server, the only param you are required to provide is <code>streamName</code>.</em></p>
+    <p class="example"><code>proxy-publisher.html?host=myred5proserver.com&protocol=https&port=443&app=live&streamName=mystream&verbose=1</code</p>
   </body>
 </html>

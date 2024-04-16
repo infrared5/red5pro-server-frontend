@@ -56,6 +56,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
         width: 100%;
         height: 480px;
       }
+      .red5pro-media-control-bar {
+        min-height: 40px;
+      }
     </style>
     <style type="text/css">
       /* Top Bar CSS */
@@ -382,6 +385,17 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
           'background: #fff; color: #222'
         )
         console.log(
+          '%c [api] ' + '%c : The api version of SM 2.0. Default: `v1`.',
+          'background: #222; color: #ebefd0',
+          'background: #fff; color: #222'
+        )
+        console.log(
+          '%c [nodeGroup] ' +
+            '%c : The cluster nodeGroup. Required, no default.',
+          'background: #222; color: #ebefd0',
+          'background: #fff; color: #222'
+        )
+        console.log(
           '%c [streamName] ' +
             '%c : The unique stream name to subscribe to. Required, no default.',
           'background: #222; color: #ebefd0',
@@ -415,7 +429,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
         console.log(
           '%c [ EXAMPLE ] ' +
             '%c   : ' +
-            '%c proxy-subscriber.html?host=myred5proserver.com&protocol=https&port=43&app=live&streamName=mystream&verbose=1  ',
+            '%c proxy-subscriber.html?host=myred5proserver.com&protocol=https&port=443&app=live&streamName=mystream&verbose=1  ',
           'background: #222; color: #ebefd0',
           'background: #fff; color: #222',
           'background: #d0efd2; color: #222'
@@ -434,7 +448,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
     <script src="lib/red5pro/red5pro-sdk.min.js"></script>
     <script src="script/r5pro-autoplay-utils.js"></script>
     <script>
-      ;(function (window, red5prosdk) {
+      ;((window, red5prosdk) => {
         // Easy access/parse of query params.
         function getParameterByName(name, url) {
           // eslint-disable-line no-unused-vars
@@ -518,7 +532,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
         var port = getParameterByName('port') || window.location.port
         var host = getParameterByName('host') || window.location.hostname
         var app = getParameterByName('app') || 'live'
-        var order = getParameterByName('view') || ['rtc', 'rtmp', 'hls']
+        var streamManagerAPI = getParameterByName('api') || 'v1'
+        var nodeGroup = getParameterByName('nodeGroup') || 'default'
         var streamName = getParameterByName('streamName')
         var isSecure = protocol === 'https'
         var smProtocol = protocol
@@ -539,22 +554,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
           ? parseInt(getParameterByName('delay'), 10)
           : NaN
 
-        var rtcConfig = {
-          host: host,
+        const httpProtocol = protocol === 'wss' ? 'https' : 'http'
+        const endpoint = !preferWhipWhep
+          ? `${protocol}://${host}:${port}/as/${streamManagerAPI}/proxy/ws/subscribe/${app}/${streamName}`
+          : `${httpProtocol}://${host}:${port}/as/${streamManagerAPI}/proxy/whep/${app}/${streamName}`
+
+        const rtcConfig = {
+          endpoint,
           streamName: streamName,
-          app: preferWhipWhep ? app : 'streammanager',
-          protocol: wsProtocol,
-          port: wsPort,
           signalingSocketOnly: switchToDC,
           enableChannelSignaling: switchToDC,
           socketSwitchDelay: !isNaN(switchDelay) ? switchDelay : 5000,
-        }
-        var hlsConfig = {
-          host: host,
-          protocol: protocol,
-          port: port,
-          app: app,
-          streamName: streamName,
+          connectionParams: {
+            nodeGroup,
+          },
         }
 
         var subscriber
@@ -595,57 +608,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
           }
         }
 
-        const { WHEPClient, Red5ProSubscriber } = red5prosdk
-
-        requestEdge(smProtocol, smPort, host, app, streamName, isSecure)
-          .then(function (edgeHost) {
-            // Edge host request is successful.
-            rtcConfig.connectionParams = preferWhipWhep
-              ? undefined
-              : {
-                  host: edgeHost,
-                  app: app,
-                }
-            // HLS is accessing an edge which is most likely not secure.
-            hlsConfig.host = edgeHost
-            hlsConfig.protocol = 'http'
-            hlsConfig.port = 5080
-
-            console.log('[rtc] : ' + JSON.stringify(rtcConfig, null, 2))
-            console.log('[hls] : ' + JSON.stringify(hlsConfig, null, 2))
-
-            // Establish a subscriber session.
-            if (!preferWhipWhep) {
-              var sub = new Red5ProSubscriber()
-              failover = sub.setPlaybackOrder(order).init({
-                rtc: rtcConfig,
-                hls: hlsConfig,
-              })
-            } else {
-              failover = new WHEPClient().init(rtcConfig)
+        const start = async () => {
+          try {
+            const { WHEPClient, RTCSubscriber } = red5prosdk
+            subscriber = preferWhipWhep ? new WHEPClient() : new RTCSubscriber()
+            subscriber.on('*', onSubscriberEvent)
+            if (window.trackAutoplayRestrictions) {
+              window.trackAutoplayRestrictions(subscriber)
             }
-            failover
-              .then(function (subscriberImpl) {
-                subscriber = subscriberImpl
-                subscriber.on('*', onSubscriberEvent)
-                if (window.trackAutoplayRestrictions) {
-                  window.trackAutoplayRestrictions(subscriber)
-                }
-                subscriber.subscribe()
-              })
-              .catch(function (error) {
-                console.error(error)
-                displayPrompt('Subscribe.Fail')
-                shutdown()
-              })
-          })
-          .catch(function (error) {
+            await subscriber.init(rtcConfig)
+            await subscriber.subscribe()
+          } catch (error) {
             console.error(error)
             displayPrompt('Subscribe.Fail')
-          })
-
-        window.subscriberLog = function (message) {
-          console.log('[RTMPSubscriber] :: ' + message)
+            shutdown()
+          }
         }
 
         const shutdown = async () => {
@@ -662,6 +639,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
         }
         window.addEventListener('pagehide', shutdown)
         window.addEventListener('beforeunload', shutdown)
+        window.subscriberLog = (message) => {
+          console.log('[Subscriber] :: ' + message)
+        }
+
+        start()
       })(window, window.red5prosdk)
     </script>
   </body>
