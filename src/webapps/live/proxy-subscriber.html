@@ -406,6 +406,23 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
           'background: #fff; color: #222'
         )
         console.log(
+          '%c [stats] ' + '%c   : Flag to turn on stats monitoring. Optional.',
+          'background: #222; color: #ebefd0',
+          'background: #fff; color: #222'
+        )
+        console.log(
+          '%c [statsendpoint] ' +
+            '%c   : Endpoint to deliver stats (if flag is on). Set to URL if endpoint available. Do not set at all if only sending over DC. Set to `null` if not sending over DC. Optional.',
+          'background: #222; color: #ebefd0',
+          'background: #fff; color: #222'
+        )
+        console.log(
+          '%c [statsinterval] ' +
+            '%c   : Number in milliseconds to poll for stats monitoring (if flag is on). Optional.',
+          'background: #222; color: #ebefd0',
+          'background: #fff; color: #222'
+        )
+        console.log(
           '%c [dc] ' +
             '%c       : Request to switch from socket to RTCDataChannel after signalling is complete. Optional.',
           'background: #222; color: #ebefd0',
@@ -525,10 +542,27 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
         var smPort = isSecure ? '' : '5080'
         var wsProtocol = isSecure ? 'wss' : 'ws'
         var wsPort = isSecure ? 443 : 5080
+        var useStats = false
+        var statsEndpoint = getParameterByName('statsendpoint')
+        var statsInterval = getParameterByName('statsinterval')
         var preferWhipWhep = true
         if (getParameterByName('whipwhep')) {
           var whipwhep = getParameterByName('whipwhep')
           preferWhipWhep = whipwhep === '1' || whipwhep === 'true'
+        }
+        if (getParameterByName('stats')) {
+          var stats = getParameterByName('stats')
+          useStats = stats === '1' || stats === 'true'
+          if (!statsInterval) {
+            statsInterval = undefined
+          } else if (statsInterval === 'null') {
+            statsInterval = null
+          }
+          if (statsInterval && !isNaN(statsInterval)) {
+            statsInterval = parseInt(statsInterval, 10)
+          } else {
+            statsInterval = 5000
+          }
         }
         var switchToDC = true
         if (getParameterByName('dc')) {
@@ -548,6 +582,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
           signalingSocketOnly: switchToDC,
           enableChannelSignaling: switchToDC,
           socketSwitchDelay: !isNaN(switchDelay) ? switchDelay : 5000,
+          stats: !useStats
+            ? undefined
+            : {
+                interval: statsInterval,
+                endpoint: statsEndpoint,
+              },
         }
         var hlsConfig = {
           host: host,
